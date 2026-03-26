@@ -24,11 +24,11 @@ out/
 .DS_Store
 Thumbs.db
 
-# Local settings
-.claude/settings.local.json
+# Claude Code local config and skills
+.claude/
 
-# BMad local config (keep module configs, ignore local state)
-_bmad/core/
+# BMad tooling and module configs
+_bmad/
 
 # Logs
 *.log
