@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>patientVault - Design Directions</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f1f5f9; color: #0f172a; }
+
+  /* Navigation */
+  .nav { position: fixed; top: 0; left: 0; right: 0; background: #0f172a; color: white; padding: 16px 32px; display: flex; gap: 16px; align-items: center; z-index: 100; }
+  .nav h1 { font-size: 16px; font-weight: 600; margin-right: 24px; }
+  .nav button { background: transparent; border: 1px solid #475569; color: #e2e8f0; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 14px; transition: all 0.2s; }
+  .nav button:hover, .nav button.active { background: #2563eb; border-color: #2563eb; color: white; }
+
+  /* Direction containers */
+  .direction { display: none; padding: 80px 32px 32px; min-height: 100vh; }
+  .direction.active { display: block; }
+  .direction-header { max-width: 1024px; margin: 0 auto 24px; }
+  .direction-header h2 { font-size: 24px; font-weight: 600; margin-bottom: 8px; }
+  .direction-header p { color: #64748b; font-size: 14px; line-height: 1.6; }
+
+  /* Mockup frame */
+  .mockup { max-width: 1024px; margin: 0 auto; background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden; }
+  .mockup-mobile { max-width: 390px; margin: 24px auto 0; background: white; border-radius: 24px; box-shadow: 0 4px 24px rgba(0,0,0,0.15); overflow: hidden; border: 4px solid #1e293b; }
+
+  /* Shared components */
+  .search-bar { padding: 16px 24px; border-bottom: 1px solid #e2e8f0; }
+  .search-bar input { width: 100%; padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 16px; outline: none; background: #f8fafc; }
+  .search-bar input:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); background: white; }
+  .search-bar input::placeholder { color: #94a3b8; }
+
+  .patient-header { padding: 24px; border-bottom: 1px solid #e2e8f0; }
+  .patient-name { font-size: 24px; font-weight: 600; margin-bottom: 4px; }
+  .patient-meta { font-size: 14px; color: #64748b; }
+
+  .tabs { display: flex; border-bottom: 1px solid #e2e8f0; padding: 0 24px; }
+  .tab { padding: 12px 16px; font-size: 14px; font-weight: 500; color: #64748b; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; }
+  .tab.active { color: #2563eb; border-bottom-color: #2563eb; }
+  .tab:hover { color: #0f172a; }
+
+  .content { padding: 24px; }
+  .field-group { margin-bottom: 20px; }
+  .field-label { font-size: 12px; font-weight: 500; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+  .field-value { font-size: 16px; padding: 8px 12px; border: 1px solid transparent; border-radius: 6px; cursor: text; transition: all 0.15s; }
+  .field-value:hover { background: #f8fafc; border-color: #e2e8f0; }
+
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+  .btn-primary { background: #2563eb; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; transition: background 0.2s; }
+  .btn-primary:hover { background: #1d4ed8; }
+  .btn-ghost { background: transparent; color: #64748b; border: 1px solid #e2e8f0; padding: 10px 20px; border-radius: 8px; font-size: 14px; cursor: pointer; }
+
+  .toast { position: fixed; bottom: 24px; right: 24px; background: #10b981; color: white; padding: 12px 20px; border-radius: 8px; font-size: 14px; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+  .toast svg { width: 16px; height: 16px; }
+
+  /* Empty state */
+  .empty-state { text-align: center; padding: 80px 24px; }
+  .empty-state h3 { font-size: 20px; font-weight: 600; margin-bottom: 8px; }
+  .empty-state p { color: #64748b; margin-bottom: 24px; }
+
+  /* Search results */
+  .search-results { padding: 8px; }
+  .search-result { padding: 12px 16px; border-radius: 8px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: background 0.15s; }
+  .search-result:hover { background: #eff6ff; }
+  .search-result-name { font-weight: 500; }
+  .search-result-meta { font-size: 13px; color: #64748b; }
+
+  /* Doc list */
+  .doc-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f1f5f9; }
+  .doc-name { font-size: 14px; font-weight: 500; }
+  .doc-meta { font-size: 12px; color: #94a3b8; }
+
+  /* Insurance card */
+  .insurance-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+  .insurance-provider { font-weight: 600; margin-bottom: 8px; }
+  .insurance-detail { font-size: 14px; color: #64748b; margin-bottom: 4px; }
+  .dependent-tag { display: inline-block; background: #eff6ff; color: #2563eb; font-size: 12px; padding: 4px 10px; border-radius: 12px; margin-right: 6px; margin-top: 8px; }
+
+  /* Direction A specific */
+  .dir-a .search-hero { padding: 48px 24px; text-align: center; background: linear-gradient(180deg, #f8fafc 0%, white 100%); }
+  .dir-a .search-hero input { max-width: 600px; margin: 0 auto; display: block; padding: 16px 20px; font-size: 18px; border-radius: 12px; }
+  .dir-a .search-hero .hint { font-size: 13px; color: #94a3b8; margin-top: 12px; }
+
+  /* Direction B specific */
+  .dir-b .split-layout { display: grid; grid-template-columns: 360px 1fr; min-height: calc(100vh - 80px); }
+  .dir-b .left-panel { border-right: 1px solid #e2e8f0; background: #f8fafc; }
+  .dir-b .right-panel { background: white; }
+
+  /* Direction C specific */
+  .dir-c .compact .field-group { margin-bottom: 12px; }
+  .dir-c .compact .field-value { font-size: 14px; padding: 6px 10px; }
+  .dir-c .compact .content { padding: 16px; }
+
+  /* Comparison view */
+  .comparison { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; max-width: 1400px; margin: 0 auto; }
+  .comparison .mockup { max-width: none; }
+
+  /* Label badges */
+  .badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 4px; margin-left: 8px; }
+  .badge-rec { background: #dcfce7; color: #166534; }
+  .badge-alt { background: #fef3c7; color: #92400e; }
+</style>
+</head>
+<body>
+
+<div class="nav">
+  <h1>patientVault Design Directions</h1>
+  <button class="active" onclick="show('a')">A: Search-Centered</button>
+  <button onclick="show('b')">B: Split Panel</button>
+  <button onclick="show('c')">C: Compact Dense</button>
+  <button onclick="show('mobile')">Mobile Views</button>
+</div>
+
+<!-- Direction A: Search-Centered (Recommended) -->
+<div id="dir-a" class="direction dir-a active">
+  <div class="direction-header">
+    <h2>Direction A: Search-Centered <span class="badge badge-rec">RECOMMENDED</span></h2>
+    <p>Search bar dominates the top of the page. Hero-style search on empty/home state. Patient record opens as a full-width card below search. Single-column flow. Maximum simplicity — the search IS the navigation.</p>
+  </div>
+
+  <!-- Empty state -->
+  <div class="mockup" style="margin-bottom: 24px;">
+    <div class="search-hero">
+      <div style="font-size: 28px; font-weight: 600; margin-bottom: 16px; color: #0f172a;">patientVault</div>
+      <input type="text" placeholder="Search patients by name, DOB, or phone..." autofocus>
+      <div class="hint">Press / to focus search from anywhere</div>
+    </div>
+    <div class="empty-state">
+      <h3>No patients yet</h3>
+      <p>Add your first patient to get started</p>
+      <button class="btn-primary">+ Add Your First Patient</button>
+    </div>
+  </div>
+
+  <!-- With patient record -->
+  <div class="mockup">
+    <div class="search-bar">
+      <input type="text" placeholder="Search patients..." value="Sarah J">
+    </div>
+    <div class="search-results" style="border-bottom: 1px solid #e2e8f0;">
+      <div class="search-result" style="background: #eff6ff;">
+        <div>
+          <div class="search-result-name">Sarah Johnson</div>
+          <div class="search-result-meta">DOB: 03/15/1985 &middot; (555) 234-5678</div>
+        </div>
+        <div style="font-size: 12px; color: #94a3b8;">&#x2192;</div>
+      </div>
+      <div class="search-result">
+        <div>
+          <div class="search-result-name">Sarah James</div>
+          <div class="search-result-meta">DOB: 11/22/1990 &middot; (555) 876-5432</div>
+        </div>
+        <div style="font-size: 12px; color: #94a3b8;">&#x2192;</div>
+      </div>
+    </div>
+    <div class="patient-header">
+      <div class="patient-name">Sarah Johnson</div>
+      <div class="patient-meta">DOB: March 15, 1985 &middot; (555) 234-5678 &middot; ID: PV-1042</div>
+    </div>
+    <div class="tabs">
+      <div class="tab active">Demographics</div>
+      <div class="tab">Documents</div>
+      <div class="tab">Insurance</div>
+    </div>
+    <div class="content">
+      <div class="field-row">
+        <div class="field-group">
+          <div class="field-label">First Name</div>
+          <div class="field-value">Sarah</div>
+        </div>
+        <div class="field-group">
+          <div class="field-label">Last Name</div>
+          <div class="field-value">Johnson</div>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field-group">
+          <div class="field-label">Date of Birth</div>
+          <div class="field-value">03/15/1985</div>
+        </div>
+        <div class="field-group">
+          <div class="field-label">Gender</div>
+          <div class="field-value">Female</div>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field-group">
+          <div class="field-label">Phone</div>
+          <div class="field-value">(555) 234-5678</div>
+        </div>
+        <div class="field-group">
+          <div class="field-label">Email</div>
+          <div class="field-value">sarah.johnson@email.com</div>
+        </div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">Address</div>
+        <div class="field-value">1234 Oak Avenue, Springfield, IL 62701</div>
+      </div>
+    </div>
+  </div>
+  <div class="toast"><svg viewBox="0 0 16 16" fill="currentColor"><path d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z"/></svg> Patient updated</div>
+</div>
+
+<!-- Direction B: Split Panel -->
+<div id="dir-b" class="direction dir-b">
+  <div class="direction-header">
+    <h2>Direction B: Split Panel <span class="badge badge-alt">ALTERNATIVE</span></h2>
+    <p>Desktop uses a persistent left panel showing search + patient list, with detail view on the right. Feels more like a traditional CRM. More information visible at once, but slightly more complex layout.</p>
+  </div>
+
+  <div class="mockup">
+    <div class="split-layout">
+      <div class="left-panel">
+        <div class="search-bar" style="background: white;">
+          <input type="text" placeholder="Search patients..." value="Sa">
+        </div>
+        <div class="search-results">
+          <div class="search-result" style="background: #eff6ff;">
+            <div>
+              <div class="search-result-name">Sarah Johnson</div>
+              <div class="search-result-meta">DOB: 03/15/1985</div>
+            </div>
+          </div>
+          <div class="search-result">
+            <div>
+              <div class="search-result-name">Sarah James</div>
+              <div class="search-result-meta">DOB: 11/22/1990</div>
+            </div>
+          </div>
+          <div class="search-result">
+            <div>
+              <div class="search-result-name">Samuel Chen</div>
+              <div class="search-result-meta">DOB: 06/08/1978</div>
+            </div>
+          </div>
+          <div class="search-result">
+            <div>
+              <div class="search-result-name">Sandra Williams</div>
+              <div class="search-result-meta">DOB: 01/30/1995</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="right-panel">
+        <div class="patient-header">
+          <div class="patient-name">Sarah Johnson</div>
+          <div class="patient-meta">DOB: March 15, 1985 &middot; (555) 234-5678</div>
+        </div>
+        <div class="tabs">
+          <div class="tab active">Demographics</div>
+          <div class="tab">Documents</div>
+          <div class="tab">Insurance</div>
+        </div>
+        <div class="content">
+          <div class="field-row">
+            <div class="field-group">
+              <div class="field-label">First Name</div>
+              <div class="field-value">Sarah</div>
+            </div>
+            <div class="field-group">
+              <div class="field-label">Last Name</div>
+              <div class="field-value">Johnson</div>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field-group">
+              <div class="field-label">Date of Birth</div>
+              <div class="field-value">03/15/1985</div>
+            </div>
+            <div class="field-group">
+              <div class="field-label">Gender</div>
+              <div class="field-value">Female</div>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field-group">
+              <div class="field-label">Phone</div>
+              <div class="field-value">(555) 234-5678</div>
+            </div>
+            <div class="field-group">
+              <div class="field-label">Email</div>
+              <div class="field-value">sarah.johnson@email.com</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Direction C: Compact Dense -->
+<div id="dir-c" class="direction dir-c">
+  <div class="direction-header">
+    <h2>Direction C: Compact Dense <span class="badge badge-alt">ALTERNATIVE</span></h2>
+    <p>Same search-centered layout as Direction A, but with tighter spacing and more data visible at once. Trades the "airy" feel for efficiency. Better for power users who want to see more without scrolling.</p>
+  </div>
+
+  <div class="mockup">
+    <div class="search-bar" style="padding: 8px 16px;">
+      <input type="text" placeholder="Search patients..." value="Sarah J" style="padding: 8px 12px; font-size: 14px;">
+    </div>
+    <div class="patient-header" style="padding: 12px 16px;">
+      <div class="patient-name" style="font-size: 18px;">Sarah Johnson</div>
+      <div class="patient-meta" style="font-size: 12px;">DOB: 03/15/1985 &middot; (555) 234-5678 &middot; PV-1042</div>
+    </div>
+    <div class="tabs" style="padding: 0 16px;">
+      <div class="tab active" style="padding: 8px 12px; font-size: 13px;">Demographics</div>
+      <div class="tab" style="padding: 8px 12px; font-size: 13px;">Documents</div>
+      <div class="tab" style="padding: 8px 12px; font-size: 13px;">Insurance</div>
+    </div>
+    <div class="content compact" style="padding: 12px 16px;">
+      <div class="field-row" style="gap: 12px;">
+        <div class="field-group" style="margin-bottom: 8px;">
+          <div class="field-label" style="font-size: 11px; margin-bottom: 2px;">First Name</div>
+          <div class="field-value" style="font-size: 14px; padding: 4px 8px;">Sarah</div>
+        </div>
+        <div class="field-group" style="margin-bottom: 8px;">
+          <div class="field-label" style="font-size: 11px; margin-bottom: 2px;">Last Name</div>
+          <div class="field-value" style="font-size: 14px; padding: 4px 8px;">Johnson</div>
+        </div>
+      </div>
+      <div class="field-row" style="gap: 12px;">
+        <div class="field-group" style="margin-bottom: 8px;">
+          <div class="field-label" style="font-size: 11px; margin-bottom: 2px;">Date of Birth</div>
+          <div class="field-value" style="font-size: 14px; padding: 4px 8px;">03/15/1985</div>
+        </div>
+        <div class="field-group" style="margin-bottom: 8px;">
+          <div class="field-label" style="font-size: 11px; margin-bottom: 2px;">Gender</div>
+          <div class="field-value" style="font-size: 14px; padding: 4px 8px;">Female</div>
+        </div>
+      </div>
+      <div class="field-row" style="gap: 12px;">
+        <div class="field-group" style="margin-bottom: 8px;">
+          <div class="field-label" style="font-size: 11px; margin-bottom: 2px;">Phone</div>
+          <div class="field-value" style="font-size: 14px; padding: 4px 8px;">(555) 234-5678</div>
+        </div>
+        <div class="field-group" style="margin-bottom: 8px;">
+          <div class="field-label" style="font-size: 11px; margin-bottom: 2px;">Email</div>
+          <div class="field-value" style="font-size: 14px; padding: 4px 8px;">sarah.johnson@email.com</div>
+        </div>
+      </div>
+      <div class="field-group" style="margin-bottom: 8px;">
+        <div class="field-label" style="font-size: 11px; margin-bottom: 2px;">Address</div>
+        <div class="field-value" style="font-size: 14px; padding: 4px 8px;">1234 Oak Avenue, Springfield, IL 62701</div>
+      </div>
+      <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid #e2e8f0;">
+        <div class="field-label" style="font-size: 11px; margin-bottom: 8px;">Insurance</div>
+        <div class="insurance-card" style="padding: 10px;">
+          <div class="insurance-provider" style="font-size: 13px;">Blue Cross Blue Shield</div>
+          <div class="insurance-detail" style="font-size: 12px;">Policy: BCB-2024-8891 &middot; Group: GRP-445 &middot; Member: MEM-001</div>
+          <div><span class="dependent-tag">Jake Johnson (Son)</span><span class="dependent-tag">Emma Johnson (Daughter)</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Mobile Views -->
+<div id="dir-mobile" class="direction">
+  <div class="direction-header">
+    <h2>Mobile Views</h2>
+    <p>How Direction A (recommended) adapts to mobile. Same flow, stacked layout, touch-optimized tap targets.</p>
+  </div>
+
+  <div style="display: flex; gap: 24px; justify-content: center; flex-wrap: wrap;">
+    <!-- Mobile: Empty State -->
+    <div>
+      <div style="text-align: center; margin-bottom: 12px; font-size: 13px; color: #64748b; font-weight: 500;">Empty State</div>
+      <div class="mockup-mobile">
+        <div style="padding: 24px 16px; text-align: center;">
+          <div style="font-size: 22px; font-weight: 600; margin-bottom: 16px;">patientVault</div>
+          <input type="text" placeholder="Search patients..." style="width: 100%; padding: 14px 16px; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 16px; background: #f8fafc;">
+        </div>
+        <div class="empty-state" style="padding: 40px 24px;">
+          <h3 style="font-size: 18px;">No patients yet</h3>
+          <p style="font-size: 14px;">Add your first patient to get started</p>
+          <button class="btn-primary" style="width: 100%; padding: 14px;">+ Add Your First Patient</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mobile: Search Results -->
+    <div>
+      <div style="text-align: center; margin-bottom: 12px; font-size: 13px; color: #64748b; font-weight: 500;">Search Results</div>
+      <div class="mockup-mobile">
+        <div class="search-bar" style="padding: 12px 16px;">
+          <input type="text" value="Sarah" style="width: 100%; padding: 14px 16px; border: 1px solid #2563eb; border-radius: 10px; font-size: 16px; box-shadow: 0 0 0 3px rgba(37,99,235,0.1);">
+        </div>
+        <div class="search-results">
+          <div class="search-result" style="padding: 16px;">
+            <div>
+              <div class="search-result-name">Sarah Johnson</div>
+              <div class="search-result-meta">DOB: 03/15/1985 &middot; (555) 234-5678</div>
+            </div>
+            <div style="color: #94a3b8;">&#x2192;</div>
+          </div>
+          <div class="search-result" style="padding: 16px;">
+            <div>
+              <div class="search-result-name">Sarah James</div>
+              <div class="search-result-meta">DOB: 11/22/1990 &middot; (555) 876-5432</div>
+            </div>
+            <div style="color: #94a3b8;">&#x2192;</div>
+          </div>
+        </div>
+        <div style="padding: 16px; border-top: 1px solid #e2e8f0; text-align: center;">
+          <button class="btn-ghost" style="width: 100%; padding: 14px;">+ Create "Sarah" as New Patient</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mobile: Patient Record -->
+    <div>
+      <div style="text-align: center; margin-bottom: 12px; font-size: 13px; color: #64748b; font-weight: 500;">Patient Record</div>
+      <div class="mockup-mobile">
+        <div style="padding: 16px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #e2e8f0;">
+          <div style="color: #64748b; font-size: 18px; cursor: pointer;">&larr;</div>
+          <input type="text" placeholder="Search..." style="flex: 1; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: #f8fafc;">
+        </div>
+        <div class="patient-header" style="padding: 16px;">
+          <div class="patient-name" style="font-size: 20px;">Sarah Johnson</div>
+          <div class="patient-meta" style="font-size: 13px;">DOB: 03/15/1985 &middot; (555) 234-5678</div>
+        </div>
+        <div class="tabs" style="padding: 0 16px; overflow-x: auto;">
+          <div class="tab active" style="white-space: nowrap;">Demographics</div>
+          <div class="tab" style="white-space: nowrap;">Documents</div>
+          <div class="tab" style="white-space: nowrap;">Insurance</div>
+        </div>
+        <div class="content" style="padding: 16px;">
+          <div class="field-group">
+            <div class="field-label">First Name</div>
+            <div class="field-value">Sarah</div>
+          </div>
+          <div class="field-group">
+            <div class="field-label">Last Name</div>
+            <div class="field-value">Johnson</div>
+          </div>
+          <div class="field-group">
+            <div class="field-label">Phone</div>
+            <div class="field-value">(555) 234-5678</div>
+          </div>
+          <div class="field-group">
+            <div class="field-label">Email</div>
+            <div class="field-value">sarah.johnson@email.com</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function show(id) {
+  document.querySelectorAll('.direction').forEach(d => d.classList.remove('active'));
+  document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('dir-' + (id === 'mobile' ? 'mobile' : id)).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>
+</body>
+</html>
